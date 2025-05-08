@@ -1,0 +1,7 @@
+Operator Agent Prototype Overview
+
+1) This prototype helps you learn and explore the following:
+2) Prompt Engineering – Understand how to craft effective prompts for optimal LLM responses.
+3) Running LLMs Locally with Ollama – Learn how to set up and use large language models on your local machine.
+4) Customizing LLM Behavior – Use prompt engineering techniques to tailor the model’s responses to your needs.
+5) Accessing Backend Browser Code – Learn how to bypass Chrome's bot detection mechanisms to interact with backend code through automated agents.
