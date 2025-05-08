@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Llama Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        @keyframes typing {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        .typing-dot {
+            animation: typing 1.5s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.3s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.6s; }
+
+        .transition-all-200 {
+            transition: all 0.2s ease;
+        }
+        .source-link {
+            color: #4f46e5;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .source-link:hover {
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex flex-col">
+    <header class="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+                <i class="fas fa-robot text-white text-xl"></i>
+            </div>
+            <h1 class="text-xl font-semibold text-gray-800">Llama + PNN Chat</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button class="p-2 rounded-full hover:bg-gray-100 transition-all-200">
+                <i class="fas fa-cog text-gray-500"></i>
+            </button>
+            <button class="p-2 rounded-full hover:bg-gray-100 transition-all-200">
+                <i class="fas fa-moon text-gray-500"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 overflow-hidden flex flex-col">
+        <div class="bg-indigo-50 text-indigo-800 py-2 px-4 text-sm flex items-center justify-center">
+            <span class="font-medium">Model:</span>
+            <span class="ml-2 bg-indigo-100 px-2 py-1 rounded-md">Llama 3.2 + PNN</span>
+            <span class="mx-2">•</span>
+            <span class="flex items-center">
+                <span class="w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                <span>Connected</span>
+            </span>
+        </div>
+
+        <div id="messages" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+            <div class="flex justify-start">
+                <div class="flex items-start space-x-3 max-w-3xl">
+                    <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <i class="fas fa-robot text-indigo-600"></i>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <p class="text-gray-800">Hello! I'm ANS, your AI assistant. How can I help you today? Use @googlesearch, @mail, or @youtube for special commands.</p>
+                        <div class="mt-2 flex items-center text-xs text-gray-500">
+                            <span>Just now</span>
+                            <button data-copy class="ml-2 text-gray-400 hover:text-gray-600">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-200 bg-white p-4">
+            <div class="max-w-3xl mx-auto">
+                <form id="chat-form" class="relative">
+                    <textarea 
+                        id="message-input" 
+                        rows="1" 
+                        placeholder="Message Llama... (e.g., @googlesearch latest news, @mail Send email to example@domain.com)" 
+                        class="w-full p-4 pr-12 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none transition-all-200"
+                        style="min-height: 60px; max-height: 200px;"
+                    ></textarea>
+                    <div class="absolute right-3 bottom-3 flex items-center space-x-2">
+                        <button 
+                            type="button" 
+                            class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all-200"
+                            title="Attach file"
+                        >
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <button 
+                            type="submit" 
+                            id="send-button"
+                            class="p-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-full transition-all-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                            title="Send message"
+                        >
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+                <p class="text-xs text-gray-500 mt-2 text-center">
+                    Llama 3.2 + PNN may produce inaccurate information. Consider checking important information.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const messagesContainer = document.getElementById('messages');
+            const messageInput = document.getElementById('message-input');
+            const chatForm = document.getElementById('chat-form');
+            const sendButton = document.getElementById('send-button');
+
+            messageInput.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+                sendButton.disabled = this.value.trim() === '';
+            });
+
+            chatForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                addMessage(message, 'user');
+                messageInput.value = '';
+                messageInput.style.height = 'auto';
+                sendButton.disabled = true;
+                messageInput.focus();
+
+                const isRealTime = isRealTimeQuery(message);
+                const isSpecial = message.toLowerCase().startsWith('@googlesearch') || 
+                                 message.toLowerCase().startsWith('@mail') || 
+                                 message.toLowerCase().startsWith('@youtube');
+                const typingId = showTypingIndicator(
+                    isSpecial ? 'Processing command...' : 
+                    isRealTime ? 'Searching for real-time data...' : 'Thinking...'
+                );
+
+                try {
+                    const response = await fetch('/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message })
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Chat request failed: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    removeTypingIndicator(typingId);
+                    addMessage(data.message, 'assistant', data.sources);
+                } catch (error) {
+                    removeTypingIndicator(typingId);
+                    addMessage(`Sorry, I encountered an error: ${error.message}. Please try again later.`, 'assistant');
+                    console.error('Error:', error);
+                }
+            });
+
+            function addMessage(content, sender, sources = []) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex justify-${sender === 'user' ? 'end' : 'start'}`;
+
+                let sourcesHtml = '';
+                if (sources.length > 0) {
+                    sourcesHtml = '<div class="mt-2 text-xs text-gray-500">Sources:<ul class="list-disc pl-4">';
+                    sources.forEach((source, index) => {
+                        sourcesHtml += `<li><a href="${source.url}" target="_blank" class="source-link">${source.title || 'Source ${index + 1}'}</a></li>`;
+                    });
+                    sourcesHtml += '</ul></div>';
+                }
+
+                const messageContent = `
+                    <div class="flex items-start space-x-3 max-w-3xl">
+                        ${sender === 'assistant'
+                            ? '<div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center"><i class="fas fa-robot text-indigo-600"></i></div>'
+                            : ''}
+                        <div class="${sender === 'user' ? 'bg-indigo-50 text-indigo-900' : 'bg-white'} p-4 rounded-lg shadow-sm border ${sender === 'user' ? 'border-indigo-100' : 'border-gray-100'}">
+                            <p class="${sender === 'user' ? 'text-indigo-900' : 'text-gray-800'}">${content.replace(/\n/g, '<br>')}</p>
+                            ${sourcesHtml}
+                            <div class="mt-2 flex items-center text-xs ${sender === 'user' ? 'text-indigo-500' : 'text-gray-500'}">
+                                <span>Just now</span>
+                                <button data-copy class="ml-2 ${sender === 'user' ? 'text-indigo-400 hover:text-indigo-600' : 'text-gray-400 hover:text-gray-600'}">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        ${sender === 'user'
+                            ? '<div class="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center"><i class="fas fa-user text-white"></i></div>'
+                            : ''}
+                    </div>
+                `;
+                messageDiv.innerHTML = messageContent;
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                const copyButton = messageDiv.querySelector('[data-copy]');
+                if (copyButton) {
+                    copyButton.addEventListener('click', function () {
+                        navigator.clipboard.writeText(content);
+                        const icon = this.querySelector('i');
+                        icon.className = 'fas fa-check';
+                        setTimeout(() => {
+                            icon.className = 'far fa-copy';
+                        }, 2000);
+                    });
+                }
+            }
+
+            function showTypingIndicator(message = 'Thinking...') {
+                const typingId = 'typing-' + Date.now();
+                const typingDiv = document.createElement('div');
+                typingDiv.id = typingId;
+                typingDiv.className = 'flex justify-start';
+                typingDiv.innerHTML = `
+                    <div class="flex items-start space-x-3 max-w-3xl">
+                        <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <i class="fas fa-robot text-indigo-600"></i>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                            <p class="text-gray-600">${message}</p>
+                            <div class="flex space-x-1 mt-2">
+                                <div class="typing-dot w-2 h-2 rounded-full bg-gray-400"></div>
+                                <div class="typing-dot w-2 h-2 rounded-full bg-gray-400"></div>
+                                <div class="typing-dot w-2 h-2 rounded-full bg-gray-400"></div>
+                            </div>
+                        </div>
+                    </div>`;
+                messagesContainer.appendChild(typingDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                return typingId;
+            }
+
+            function removeTypingIndicator(id) {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            }
+
+            function isRealTimeQuery(message) {
+                const realTimeKeywords = ['latest', 'current', 'today', 'now', 'real-time', 'recent', 'breaking', 'live', 'this week', 'this month'];
+                const lowerMessage = message.toLowerCase();
+                return realTimeKeywords.some(keyword => lowerMessage.includes(keyword));
+            }
+        });
+    </script>
+</body>
+</html>
